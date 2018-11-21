@@ -7,11 +7,13 @@ package org.rust.ide.annotator
 
 import org.rust.MockEdition
 import org.rust.MockRustcVersion
+import org.rust.ProjectDescriptor
+import org.rust.WithStdlibRustProjectDescriptor
 import org.rust.cargo.project.workspace.CargoWorkspace
 
+@ProjectDescriptor(WithStdlibRustProjectDescriptor::class)
 class RsErrorAnnotatorTest : RsAnnotationTestBase() {
     override val dataPath = "org/rust/ide/annotator/fixtures/errors"
-
     fun `test invalid module declarations`() = doTest("helper.rs")
 
     fun `test create file quick fix`() = checkByDirectory {
@@ -799,7 +801,7 @@ class RsErrorAnnotatorTest : RsAnnotationTestBase() {
         fn foo() {}
         fn bat() {}
         fn bar() {
-            use self::{foo};
+            use self::foo;
             use self::{foo,bat};
         }
     """)
@@ -1290,4 +1292,24 @@ class RsErrorAnnotatorTest : RsAnnotationTestBase() {
             <error descr="Use of mutable static is unsafe and requires unsafe function or block [E0133]">test</error> += 1;
         }
     """)
+
+    fun `test not allowed try expr`() = checkErrors("""
+    fn foo(){
+        let a = <error descr="the `?` operator can only be applied to values that implement `std::ops::Try` [E0277]">92?</error>;
+    }
+    """)
+
+
+    fun `test try expr in function that not allow try expr`() = checkErrors("""
+    fn foo()->i32{
+        <error descr="the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `std::ops::Try`) [E0277]">Ok(92)?</error>;
+        92
+    }
+    """)
+
+    fun `test try expr unknown type`() = checkErrors("""
+    fn foo() {
+        something_unknown?;
+    }
+""")
 }
